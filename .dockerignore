@@ -1,0 +1,7 @@
+/target
+/.git
+*.md
+**/*.rs.bk
+HANDOFF.md
+.env
+.env.*

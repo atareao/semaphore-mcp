@@ -1,0 +1,13 @@
+services:
+  semaphore-mcp:
+    build: .
+    container_name: semaphore-mcp
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    environment:
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8090
+      - SEMAPHORE_URL=${SEMAPHORE_URL}
+      - SEMAPHORE_PUBLIC_URL=${SEMAPHORE_PUBLIC_URL}
+      - SEMAPHORE_API_TOKEN=${SEMAPHORE_API_TOKEN}

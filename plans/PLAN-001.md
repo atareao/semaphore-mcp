@@ -8,11 +8,13 @@ Issue: [#1](https://github.com/atareao/semaphore-mcp/issues/1)
 - [x] `SemaphoreClient` con token passthrough (`Authorization: Bearer`).
 - [x] Modelos tipados (`Project`, `Template`, `Task`, `Inventory`, `Repository`, `AccessKey`).
 - [x] `list_projects` implementado con test wiremock.
-- [ ] Implementar `list_templates`, `get_template`, `list_tasks`, `get_task`.
-- [ ] Implementar `get_task_raw_output`, `stop_task`, `run_task`.
-- [ ] Implementar `list_inventory`, `list_repositories`, `list_access_keys`.
-- [ ] Tests wiremock para cada endpoint (incluido `run_task` con `template_id`).
-- [ ] Cobertura de errores HTTP y de decodificación.
+- [x] Implementar `list_templates`, `get_template`, `list_tasks`, `get_task`.
+- [x] Implementar `get_task_raw_output`, `stop_task`, `run_task`.
+- [x] Implementar `list_inventory`, `list_repositories`, `list_access_keys`.
+- [x] Tests wiremock para cada endpoint (incluido `run_task` con `template_id`).
+- [x] Cobertura de errores HTTP y de decodificación.
+- [x] `web_urls` en las respuestas de tareas del cliente (`Task.web_urls`), con
+      constructor `SemaphoreClient::with_public_url` para `SEMAPHORE_PUBLIC_URL`.
 
 ## Fase 2 — Servidor MCP y 12 tools
 

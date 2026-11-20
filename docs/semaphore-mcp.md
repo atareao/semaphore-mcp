@@ -35,14 +35,27 @@ Ver la tabla del [`README.md`](../README.md).
 
 ## Estado
 
-Esqueleto inicial. El cliente tipado y los helpers de configuración/URLs están
-implementados; las tools aún no están registradas. El test de `run_task` está en
-rojo a propósito (TDD).
+Cliente REST tipado completo (12 operaciones: `list_projects`, `list_templates`,
+`get_template`, `run_task`, `get_task`, `list_tasks`, `stop_task`,
+`get_task_raw_output`, `list_inventory`, `list_repositories`, `list_access_keys`)
+con tests wiremock. Las tools MCP aún no están registradas (Fase 2).
+
+## Notas de API
+
+- La salida cruda de una tarea se obtiene en
+  `GET /api/project/{project_id}/tasks/{task_id}/raw_output` (Semaphore 2.14+,
+  [PR #2880](https://github.com/semaphoreui/semaphore/pull/2880)); no es
+  `/output`. El cliente devuelve el texto tal cual, sin quitar ANSI ni analizar.
+- `stop_task` hace `POST .../tasks/{task_id}/stop` y no devuelve cuerpo.
+- Las respuestas de tarea (`Task`) llevan `web_urls` construidas en el cliente;
+  el cliente por defecto usa `SEMAPHORE_URL` como URL pública y
+  `with_public_url` permite pasar `SEMAPHORE_PUBLIC_URL` (Fase 2 lo cablea).
 
 ## Decisiones
 
 - Transporte HTTP streamable únicamente (sin stdio) en v1.
 - Token passthrough por petición; el cliente no guarda token fijo.
+- Timeouts explícitos en el cliente HTTP (30 s petición, 10 s conexión).
 - Un solo crate con librería + binario para que los tests unitarios puedan
   importar los módulos.
 - `rust-version = 1.88` porque `rmcp` 3.11 lo exige.

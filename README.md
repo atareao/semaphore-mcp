@@ -37,6 +37,9 @@ SEMAPHORE_URL=http://semaphore:3000 ./target/release/semaphore-mcp
 The MCP endpoint is served at `http://<MCP_HOST>:<MCP_PORT>/mcp` using the
 streamable HTTP transport. Stdio is not supported in v1.
 
+Container deployment with Podman/Docker and Compose is documented in
+[`docs/semaphore-mcp.md`](docs/semaphore-mcp.md#despliegue-con-contenedores).
+
 ## Tests
 
 ```bash

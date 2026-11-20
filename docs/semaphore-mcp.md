@@ -91,8 +91,13 @@ MCP_ALLOWED_HOSTS=semaphore-mcp.territoriolinux.es
 
 - Lista separada por comas, con espacios recortados y entradas vacías ignoradas.
 - Una entrada sin puerto casa con cualquier puerto; con puerto exige ese puerto.
-- `MCP_ALLOWED_HOSTS=*` acepta cualquier `Host` (útil si el endpoint solo es
-  accesible desde la red interna). Úsalo con criterio: desactiva la protección.
+- La comparación es **exacta** (host, o `host:puerto`) e insensible a mayúsculas:
+  **no hay comodines ni patrones**. Una entrada como `*.example.com` no casa
+  nunca y falla en silencio (la petición se rechaza con 403).
+- El único valor especial es `*` **a secas** (un solo asterisco, sin host
+  alrededor): desactiva la comprobación y acepta cualquier `Host`. No es un
+  patrón. Úsalo con criterio: solo si el endpoint no es accesible desde clientes
+  no confiables.
 - Un valor ausente, vacío o solo espacios deja el comportamiento por defecto
   (solo loopback).
 - `MCP_ALLOWED_HOSTS` no es un secreto: aparece en el `Debug` de `Config`. El

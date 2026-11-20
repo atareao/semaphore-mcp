@@ -31,9 +31,11 @@ Issue: [#1](https://github.com/atareao/semaphore-mcp/issues/1)
 - [x] Dockerfile multi-stage con imagen mínima Alpine (musl), como el resto de
       MCP del monorepo.
 - [x] Publicación de la imagen en el registro (workflow listo; se publica al empujar un tag `v*`).
-- [ ] E2E contra una instancia real de Semaphore: listar proyectos, ejecutar y
-      consultar una tarea.
-- [ ] Verificar `web_urls` con `SEMAPHORE_PUBLIC_URL`.
+- [x] E2E contra una instancia real de Semaphore: listar proyectos, ejecutar y
+      consultar una tarea (verificado contra Semaphore 2.19.12 en co1: tareas 19
+      y 20, ambas `success`).
+- [x] Verificar `web_urls` con `SEMAPHORE_PUBLIC_URL` (con `SEMAPHORE_PUBLIC_URL`
+      distinta de `SEMAPHORE_URL` los `web_urls` siguen la pública).
 - [x] Documentar el despliegue.
 
 ## Fuera de alcance v1

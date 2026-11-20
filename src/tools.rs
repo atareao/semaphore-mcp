@@ -488,7 +488,7 @@ mod tests {
             .and(header("authorization", "Bearer request-token"))
             .and(body_json(json!({"template_id": 42})))
             .respond_with(
-                ResponseTemplate::new(200)
+                ResponseTemplate::new(201)
                     .set_body_json(json!({"id": 99, "status": "waiting", "template_id": 42})),
             )
             .expect(1)
@@ -584,7 +584,9 @@ mod tests {
         Mock::given(method("POST"))
             .and(path("/api/project/7/tasks/99/stop"))
             .and(header("authorization", "Bearer request-token"))
-            .respond_with(ResponseTemplate::new(200))
+            .and(header("content-type", "application/json"))
+            .and(body_json(json!({"force": false})))
+            .respond_with(ResponseTemplate::new(204))
             .expect(1)
             .mount(&mock_server)
             .await;

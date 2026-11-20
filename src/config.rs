@@ -2,6 +2,24 @@
 
 use std::env;
 
+/// Policy for the `Host` header accepted by the streamable HTTP transport.
+///
+/// The MCP endpoint sits behind a reverse proxy in production, so the incoming
+/// `Host` is the public name and not the loopback address. rmcp rejects with
+/// `403 Forbidden: Host header is not allowed` every request whose `Host` is not
+/// in its allow-list, hence the need to configure it explicitly.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum AllowedHosts {
+    /// rmcp's safe default: only loopback names (`localhost`, `127.0.0.1`, `::1`).
+    #[default]
+    Default,
+    /// Accept any `Host`; equivalent to the `*` value of `MCP_ALLOWED_HOSTS`.
+    Any,
+    /// Explicit list of accepted hosts. An entry without a port matches any
+    /// port; an entry with a port requires that exact port.
+    List(Vec<String>),
+}
+
 /// Runtime configuration for the MCP server.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Config {
@@ -16,6 +34,8 @@ pub struct Config {
     /// Optional fixed API token. When set, it takes precedence over the
     /// per-request `Authorization: Bearer` header.
     pub api_token: Option<String>,
+    /// Policy for the `Host` header accepted by the MCP transport.
+    pub allowed_hosts: AllowedHosts,
 }
 
 /// Hand-written so the API token is never printed by logs or panics.
@@ -27,6 +47,7 @@ impl std::fmt::Debug for Config {
             .field("host", &self.host)
             .field("port", &self.port)
             .field("api_token", &self.api_token.as_ref().map(|_| "<redacted>"))
+            .field("allowed_hosts", &self.allowed_hosts)
             .finish()
     }
 }
@@ -83,12 +104,15 @@ impl Config {
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty());
 
+        let allowed_hosts = parse_allowed_hosts(lookup("MCP_ALLOWED_HOSTS").as_deref());
+
         Ok(Self {
             semaphore_url,
             public_url,
             host,
             port,
             api_token,
+            allowed_hosts,
         })
     }
 
@@ -113,6 +137,35 @@ impl Config {
         } else {
             Some(token.to_string())
         }
+    }
+}
+
+/// Parse `MCP_ALLOWED_HOSTS` into an [`AllowedHosts`] policy.
+///
+/// - missing or blank → [`AllowedHosts::Default`] (rmcp loopback-only default)
+/// - `*` → [`AllowedHosts::Any`] (validation disabled)
+/// - otherwise → [`AllowedHosts::List`] with the comma-separated entries,
+///   trimmed, dropping empty ones; if nothing remains → [`AllowedHosts::Default`].
+fn parse_allowed_hosts(raw: Option<&str>) -> AllowedHosts {
+    let Some(value) = raw.map(str::trim).filter(|value| !value.is_empty()) else {
+        return AllowedHosts::Default;
+    };
+
+    if value == "*" {
+        return AllowedHosts::Any;
+    }
+
+    let hosts: Vec<String> = value
+        .split(',')
+        .map(str::trim)
+        .filter(|host| !host.is_empty())
+        .map(str::to_string)
+        .collect();
+
+    if hosts.is_empty() {
+        AllowedHosts::Default
+    } else {
+        AllowedHosts::List(hosts)
     }
 }
 
@@ -223,6 +276,7 @@ mod tests {
             host: "0.0.0.0".to_string(),
             port: 8090,
             api_token: Some("fixed-token".to_string()),
+            allowed_hosts: AllowedHosts::Default,
         };
 
         assert_eq!(
@@ -239,6 +293,7 @@ mod tests {
             host: "0.0.0.0".to_string(),
             port: 8090,
             api_token: None,
+            allowed_hosts: AllowedHosts::Default,
         };
 
         assert_eq!(
@@ -256,6 +311,7 @@ mod tests {
             host: "0.0.0.0".to_string(),
             port: 8090,
             api_token: None,
+            allowed_hosts: AllowedHosts::Default,
         };
 
         assert_eq!(
@@ -334,6 +390,7 @@ mod tests {
             host: "0.0.0.0".to_string(),
             port: 8090,
             api_token: Some("super-secret-token".to_string()),
+            allowed_hosts: AllowedHosts::Default,
         };
 
         let debug = format!("{config:?}");

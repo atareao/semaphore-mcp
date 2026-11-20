@@ -1,9 +1,6 @@
 //! Binary entry point for the Semaphore MCP server.
 
-use rmcp::transport::streamable_http_server::{
-    StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
-};
-use semaphore_mcp::{Config, SemaphoreServer};
+use semaphore_mcp::{Config, SemaphoreServer, build_app};
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -17,16 +14,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::from_env()?;
     let address = format!("{}:{}", config.host, config.port);
 
-    let server = SemaphoreServer::new(config)?;
-    let cancellation_token = tokio_util::sync::CancellationToken::new();
-    let service = StreamableHttpService::new(
-        move || Ok(server.clone()),
-        LocalSessionManager::default().into(),
-        StreamableHttpServerConfig::default()
-            .with_cancellation_token(cancellation_token.child_token()),
-    );
-
-    let router = axum::Router::new().nest_service("/mcp", service);
+    let server = SemaphoreServer::new(config.clone())?;
+    let (router, cancellation_token) = build_app(server, &config.allowed_hosts);
     let listener = tokio::net::TcpListener::bind(&address).await?;
 
     tracing::info!("semaphore-mcp listening on http://{address}/mcp");

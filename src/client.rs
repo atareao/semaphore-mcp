@@ -70,21 +70,37 @@ pub struct AccessKey {
 }
 
 /// Body sent to `POST /api/project/{project_id}/tasks`.
+///
+/// Mirrors `db.Task` in Semaphore: `environment` is a plain string (an object
+/// makes Semaphore reply 400) and Ansible knobs live nested under `params`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 pub struct RunTaskRequest {
     pub template_id: i64,
-    #[serde(default, skip_serializing_if = "is_false")]
-    pub debug: bool,
-    #[serde(default, skip_serializing_if = "is_false")]
-    pub dry_run: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub environment: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub environment: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub params: Option<RunTaskParams>,
 }
 
-fn is_false(value: &bool) -> bool {
-    !*value
+/// Ansible parameters nested under `params` in the run-task body.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+pub struct RunTaskParams {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub debug: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dry_run: Option<bool>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub limit: Vec<String>,
+}
+
+/// Body sent to `POST /api/project/{project_id}/tasks/{task_id}/stop`.
+///
+/// Semaphore always decodes a JSON body on this endpoint (`var stopObj struct {
+/// Force bool }`); a bodyless POST yields `io.EOF` and a 400. Serializing the
+/// default sends `{"force": false}`, which keeps the documented behaviour.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+pub struct StopTaskRequest {
+    pub force: bool,
 }
 
 /// Errors returned by the Semaphore client.
@@ -98,8 +114,13 @@ pub enum SemaphoreError {
         url: String,
         body: String,
     },
-    #[error("failed to decode Semaphore response: {0}")]
-    Decode(#[from] serde_json::Error),
+    #[error("failed to decode Semaphore response from {url}: {source}")]
+    Decode {
+        url: String,
+        body: String,
+        #[source]
+        source: serde_json::Error,
+    },
 }
 
 /// REST client for Semaphore UI.
@@ -159,13 +180,29 @@ impl SemaphoreClient {
         format!("{}/{}", self.base_url, path.trim_start_matches('/'))
     }
 
-    /// Attach the public `web_urls` for a task, if not already present.
+    /// Attach the public `web_urls` for a task, replacing any value that came
+    /// from the API payload.
     fn attach_web_urls(&self, project_id: i64, task: &mut Task) {
         task.web_urls = Some(task_web_urls(
             &self.public_url,
             &project_id.to_string(),
             &task.id.to_string(),
         ));
+    }
+
+    /// Decode a JSON body, keeping the request URL and body in the error.
+    ///
+    /// Only response payloads are recorded: neither the token nor any request
+    /// header is ever included.
+    fn decode_json<T: DeserializeOwned>(url: &str, body: String) -> Result<T, SemaphoreError> {
+        match serde_json::from_str(&body) {
+            Ok(value) => Ok(value),
+            Err(source) => Err(SemaphoreError::Decode {
+                url: url.to_string(),
+                body,
+                source,
+            }),
+        }
     }
 
     /// Read a response body, mapping non-2xx statuses to a typed error.
@@ -182,15 +219,21 @@ impl SemaphoreClient {
         Ok(body)
     }
 
-    async fn get_text(&self, token: &str, path: &str) -> Result<String, SemaphoreError> {
+    async fn get_body(&self, token: &str, path: &str) -> Result<(String, String), SemaphoreError> {
         let url = self.url(path);
         let response = self.http.get(&url).bearer_auth(token).send().await?;
-        Self::read_body(response, &url).await
+        let body = Self::read_body(response, &url).await?;
+        Ok((url, body))
+    }
+
+    async fn get_text(&self, token: &str, path: &str) -> Result<String, SemaphoreError> {
+        let (_, body) = self.get_body(token, path).await?;
+        Ok(body)
     }
 
     async fn get<T: DeserializeOwned>(&self, token: &str, path: &str) -> Result<T, SemaphoreError> {
-        let body = self.get_text(token, path).await?;
-        Ok(serde_json::from_str(&body)?)
+        let (url, body) = self.get_body(token, path).await?;
+        Self::decode_json(&url, body)
     }
 
     async fn post<B: Serialize, T: DeserializeOwned>(
@@ -208,12 +251,24 @@ impl SemaphoreClient {
             .send()
             .await?;
         let body = Self::read_body(response, &url).await?;
-        Ok(serde_json::from_str(&body)?)
+        Self::decode_json(&url, body)
     }
 
-    async fn post_empty(&self, token: &str, path: &str) -> Result<(), SemaphoreError> {
+    /// POST a JSON body and discard the response payload.
+    async fn post_json_no_response<B: Serialize>(
+        &self,
+        token: &str,
+        path: &str,
+        body: &B,
+    ) -> Result<(), SemaphoreError> {
         let url = self.url(path);
-        let response = self.http.post(&url).bearer_auth(token).send().await?;
+        let response = self
+            .http
+            .post(&url)
+            .bearer_auth(token)
+            .json(body)
+            .send()
+            .await?;
         Self::read_body(response, &url).await?;
         Ok(())
     }
@@ -300,9 +355,10 @@ impl SemaphoreClient {
         project_id: i64,
         task_id: i64,
     ) -> Result<(), SemaphoreError> {
-        self.post_empty(
+        self.post_json_no_response(
             token,
             &format!("api/project/{project_id}/tasks/{task_id}/stop"),
+            &StopTaskRequest::default(),
         )
         .await
     }
@@ -356,7 +412,7 @@ impl SemaphoreClient {
 mod tests {
     use super::*;
     use serde_json::json;
-    use wiremock::matchers::{body_partial_json, header, method, path};
+    use wiremock::matchers::{body_json, body_partial_json, header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[tokio::test]
@@ -390,7 +446,7 @@ mod tests {
             .and(header("authorization", "Bearer test-token"))
             .and(body_partial_json(json!({"template_id": 42})))
             .respond_with(
-                ResponseTemplate::new(200).set_body_json(json!({"id": 99, "status": "waiting"})),
+                ResponseTemplate::new(201).set_body_json(json!({"id": 99, "status": "waiting"})),
             )
             .expect(1)
             .mount(&server)
@@ -411,6 +467,45 @@ mod tests {
         assert_eq!(
             urls.task_detail,
             format!("{}/project/7/history?t=99", server.uri())
+        );
+    }
+
+    #[test]
+    fn run_task_request_serializes_only_template_id_by_default() {
+        let request = RunTaskRequest {
+            template_id: 42,
+            ..Default::default()
+        };
+
+        assert_eq!(
+            serde_json::to_value(&request).expect("request should serialize"),
+            json!({"template_id": 42})
+        );
+    }
+
+    #[test]
+    fn run_task_request_serializes_environment_and_nested_params() {
+        let request = RunTaskRequest {
+            template_id: 42,
+            environment: Some("prod".to_string()),
+            params: Some(RunTaskParams {
+                debug: Some(true),
+                dry_run: Some(false),
+                limit: vec!["web".to_string(), "db".to_string()],
+            }),
+        };
+
+        assert_eq!(
+            serde_json::to_value(&request).expect("request should serialize"),
+            json!({
+                "template_id": 42,
+                "environment": "prod",
+                "params": {
+                    "debug": true,
+                    "dry_run": false,
+                    "limit": ["web", "db"],
+                },
+            })
         );
     }
 
@@ -555,12 +650,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn stop_task_posts_to_stop_endpoint() {
+    async fn stop_task_posts_json_body_and_accepts_no_content() {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/api/project/7/tasks/99/stop"))
             .and(header("authorization", "Bearer test-token"))
-            .respond_with(ResponseTemplate::new(200))
+            // Semaphore decodes a JSON body here: an empty POST returns 400.
+            .and(header("content-type", "application/json"))
+            .and(body_json(json!({"force": false})))
+            .respond_with(ResponseTemplate::new(204))
             .expect(1)
             .mount(&server)
             .await;
@@ -570,7 +668,7 @@ mod tests {
         client
             .stop_task("test-token", 7, 99)
             .await
-            .expect("stop_task should succeed");
+            .expect("stop_task should send a JSON body and accept 204");
     }
 
     #[tokio::test]
@@ -697,7 +795,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn invalid_json_is_reported_as_decode_error() {
+    async fn invalid_json_is_reported_as_decode_error_with_url_and_body() {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/api/projects"))
@@ -711,7 +809,44 @@ mod tests {
             .await
             .expect_err("invalid JSON should fail");
 
-        assert!(matches!(error, SemaphoreError::Decode(_)));
+        match error {
+            SemaphoreError::Decode { url, body, .. } => {
+                assert!(url.ends_with("/api/projects"), "unexpected url: {url}");
+                assert_eq!(body, "<html>nope</html>");
+            }
+            other => panic!("expected a Decode error, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn run_task_decode_error_carries_the_request_url() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/api/project/7/tasks"))
+            .respond_with(ResponseTemplate::new(201).set_body_string("not-json"))
+            .mount(&server)
+            .await;
+
+        let client = SemaphoreClient::new(server.uri()).expect("client");
+        let request = RunTaskRequest {
+            template_id: 42,
+            ..Default::default()
+        };
+        let error = client
+            .run_task("test-token", 7, &request)
+            .await
+            .expect_err("invalid JSON should fail");
+
+        match error {
+            SemaphoreError::Decode { url, body, .. } => {
+                assert!(
+                    url.ends_with("/api/project/7/tasks"),
+                    "unexpected url: {url}"
+                );
+                assert_eq!(body, "not-json");
+            }
+            other => panic!("expected a Decode error, got {other:?}"),
+        }
     }
 
     #[tokio::test]

@@ -88,15 +88,18 @@ impl Config {
             return Some(token.to_string());
         }
 
-        authorization
-            .and_then(|header| {
-                header
-                    .strip_prefix("Bearer ")
-                    .or_else(|| header.strip_prefix("bearer "))
-            })
-            .map(str::trim)
-            .filter(|token| !token.is_empty())
-            .map(str::to_string)
+        let header = authorization?;
+        let (scheme, token) = header.trim().split_once(char::is_whitespace)?;
+        // HTTP auth schemes are case-insensitive (RFC 7235).
+        if !scheme.eq_ignore_ascii_case("bearer") {
+            return None;
+        }
+        let token = token.trim();
+        if token.is_empty() {
+            None
+        } else {
+            Some(token.to_string())
+        }
     }
 }
 
@@ -230,5 +233,28 @@ mod tests {
             Some("request-token".to_string())
         );
         assert_eq!(config.resolve_token(None), None);
+    }
+
+    #[test]
+    fn bearer_scheme_is_case_insensitive_and_tolerates_whitespace() {
+        let config = Config {
+            semaphore_url: "http://semaphore:3000".to_string(),
+            public_url: "http://semaphore:3000".to_string(),
+            host: "0.0.0.0".to_string(),
+            port: 8090,
+            api_token: None,
+        };
+
+        assert_eq!(
+            config.resolve_token(Some("BEARER request-token")),
+            Some("request-token".to_string())
+        );
+        assert_eq!(
+            config.resolve_token(Some("bEaReR \t  request-token")),
+            Some("request-token".to_string())
+        );
+        assert_eq!(config.resolve_token(Some("Basic request-token")), None);
+        assert_eq!(config.resolve_token(Some("Bearer")), None);
+        assert_eq!(config.resolve_token(Some("Bearer   ")), None);
     }
 }

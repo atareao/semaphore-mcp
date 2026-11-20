@@ -352,6 +352,7 @@ fn tool_error(error: SemaphoreError) -> CallToolResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::AllowedHosts;
     use serde_json::json;
     use wiremock::matchers::{body_json, header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -363,6 +364,7 @@ mod tests {
             host: "127.0.0.1".to_string(),
             port: 0,
             api_token: None,
+            allowed_hosts: AllowedHosts::Default,
         };
         SemaphoreServer::new(config).expect("server should build")
     }
@@ -430,6 +432,7 @@ mod tests {
             host: "127.0.0.1".to_string(),
             port: 0,
             api_token: Some("fixed-token".to_string()),
+            allowed_hosts: AllowedHosts::Default,
         };
         let server = SemaphoreServer::new(config).expect("server should build");
         let result = server

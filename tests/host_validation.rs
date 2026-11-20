@@ -39,9 +39,7 @@ async fn post_mcp(allowed: &AllowedHosts, host: &str) -> (StatusCode, String) {
         .header(header::HOST, host)
         .header(header::CONTENT_TYPE, "application/json")
         .header(header::ACCEPT, "application/json, text/event-stream")
-        .body(Body::from(
-            r#"{"jsonrpc":"2.0","id":1,"method":"ping"}"#,
-        ))
+        .body(Body::from(r#"{"jsonrpc":"2.0","id":1,"method":"ping"}"#))
         .expect("request should build");
 
     let response = app.oneshot(request).await.expect("router is infallible");

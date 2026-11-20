@@ -79,12 +79,14 @@ pub struct RunTaskRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub environment: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub params: Option<RunTaskParams>,
+    pub params: Option<RunTaskAnsibleParams>,
 }
 
 /// Ansible parameters nested under `params` in the run-task body.
+///
+/// Mirrors Semaphore's `AnsibleTaskParams`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
-pub struct RunTaskParams {
+pub struct RunTaskAnsibleParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub debug: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -488,7 +490,7 @@ mod tests {
         let request = RunTaskRequest {
             template_id: 42,
             environment: Some("prod".to_string()),
-            params: Some(RunTaskParams {
+            params: Some(RunTaskAnsibleParams {
                 debug: Some(true),
                 dry_run: Some(false),
                 limit: vec!["web".to_string(), "db".to_string()],

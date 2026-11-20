@@ -35,11 +35,12 @@ Ver la tabla del [`README.md`](../README.md).
 
 ## Estado
 
-Cliente REST tipado completo (12 operaciones: `list_projects`, `list_templates`,
+Cliente REST tipado completo (11 endpoints: `list_projects`, `list_templates`,
 `get_template`, `run_task`, `get_task`, `list_tasks`, `stop_task`,
 `get_task_raw_output`, `list_inventory`, `list_repositories`, `list_access_keys`)
-con tests wiremock. Las 12 tools MCP están registradas con `#[tool_router]` y
-`#[tool]` de `rmcp`, con tests de entrada, salida y errores (Fase 2 completa).
+con tests wiremock. Las 12 tools MCP (esos 11 endpoints más `ping`) están
+registradas con `#[tool_router]` y `#[tool]` de `rmcp`, con tests de entrada,
+salida y errores (Fase 2 completa).
 
 ## Notas de API
 
@@ -47,7 +48,16 @@ con tests wiremock. Las 12 tools MCP están registradas con `#[tool_router]` y
   `GET /api/project/{project_id}/tasks/{task_id}/raw_output` (Semaphore 2.14+,
   [PR #2880](https://github.com/semaphoreui/semaphore/pull/2880)); no es
   `/output`. El cliente devuelve el texto tal cual, sin quitar ANSI ni analizar.
-- `stop_task` hace `POST .../tasks/{task_id}/stop` y no devuelve cuerpo.
+- `stop_task` hace `POST .../tasks/{task_id}/stop` con **cuerpo JSON
+  obligatorio** (`{"force": false}`); Semaphore decodifica `struct{ Force bool
+  }` y un POST sin cuerpo provoca `io.EOF` → **400**. Responde 204 sin cuerpo.
+- `run_task` (`POST .../tasks`) crea la tarea con **201**. El contrato es:
+  `template_id` obligatorio; `environment` es un **string** (enviarlo como
+  objeto devuelve 400 "cannot unmarshal object ... of type string"); `debug`,
+  `dry_run` y `limit` (lista de strings) no son campos de nivel superior, van
+  anidados en `params`.
+- Los fallos de decodificación JSON se reportan como `SemaphoreError::Decode`
+  con la URL y el cuerpo de respuesta (nunca cabeceras ni tokens).
 - Las respuestas de tarea (`Task`) llevan `web_urls` construidas en el cliente;
   `SemaphoreServer::new` cablea `SEMAPHORE_PUBLIC_URL` mediante
   `SemaphoreClient::with_public_url`.

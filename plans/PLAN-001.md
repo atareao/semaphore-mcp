@@ -34,7 +34,7 @@ Issue: [#1](https://github.com/atareao/semaphore-mcp/issues/1)
 - [ ] E2E contra una instancia real de Semaphore: listar proyectos, ejecutar y
       consultar una tarea.
 - [ ] Verificar `web_urls` con `SEMAPHORE_PUBLIC_URL`.
-- [ ] Documentar el despliegue.
+- [x] Documentar el despliegue.
 
 ## Fuera de alcance v1
 

@@ -33,6 +33,62 @@ sobre la API REST de Semaphore y devuelve enlaces públicos correctos.
 
 Ver la tabla del [`README.md`](../README.md).
 
+## Despliegue con contenedores
+
+El repositorio incluye un `Dockerfile` (Alpine multi-stage, binario musl) y un
+`compose.yml`. La imagen final corre como usuario no root `mcp` (UID 1000) y
+expone el puerto `8090`.
+
+### Build
+
+```bash
+podman build -t semaphore-mcp:dev .
+# alternativa con Docker
+docker build -t semaphore-mcp:dev .
+```
+
+### Run
+
+```bash
+podman run -d --name semaphore-mcp -p 8090:8090 \
+  -e SEMAPHORE_URL=https://semaphore.example.com \
+  -e SEMAPHORE_PUBLIC_URL=https://semaphore.example.com \
+  -e SEMAPHORE_API_TOKEN=... \
+  semaphore-mcp:dev
+```
+
+### Compose
+
+```bash
+podman compose up -d
+```
+
+Usa el `compose.yml` incluido. Las tres variables `SEMAPHORE_*`
+(`SEMAPHORE_URL`, `SEMAPHORE_PUBLIC_URL`, `SEMAPHORE_API_TOKEN`) se leen del
+entorno; defínelas en un fichero `.env` junto al `compose.yml`.
+
+### Variables
+
+| Variable | Default | Obligatoria |
+| --- | --- | --- |
+| `MCP_HOST` | `0.0.0.0` | no |
+| `MCP_PORT` | `8090` | no |
+| `SEMAPHORE_URL` | — | sí |
+| `SEMAPHORE_PUBLIC_URL` | cae a `SEMAPHORE_URL` | no |
+| `SEMAPHORE_API_TOKEN` | — | no; si se define, gana sobre el `Authorization: Bearer` del cliente MCP |
+
+### Endpoint MCP
+
+Se sirve en `http://<MCP_HOST>:<MCP_PORT>/mcp` (por defecto
+`http://0.0.0.0:8090/mcp`) con transporte HTTP streamable.
+
+### Notas
+
+- El contenedor corre como usuario no root `mcp` (UID 1000).
+- `HANDOFF.md` nunca se comitea (está en `.gitignore`).
+- La publicación de la imagen en un registro queda pendiente (decisión sin
+  cerrar).
+
 ## Estado
 
 Cliente REST tipado completo (11 endpoints: `list_projects`, `list_templates`,
@@ -99,4 +155,4 @@ devuelve un error `invalid_params`. Los errores del cliente se devuelven como
 ## Follow-ups
 
 - Tests E2E contra una instancia real de Semaphore.
-- Dockerfile distroless y publicación de imagen.
+- Publicación de la imagen en un registro (pendiente).

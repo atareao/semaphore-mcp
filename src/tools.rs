@@ -258,11 +258,14 @@ impl SemaphoreServer {
             .get_task_raw_output(&token, params.project_id, params.task_id)
             .await
         {
-            Ok(raw_output) => json_result(serde_json::json!({
-                "project_id": params.project_id,
-                "task_id": params.task_id,
-                "raw_output": raw_output,
-            })),
+            Ok(raw_output) => json_result_with_text(
+                serde_json::json!({
+                    "project_id": params.project_id,
+                    "task_id": params.task_id,
+                    "raw_output": raw_output.clone(),
+                }),
+                raw_output,
+            ),
             Err(error) => Ok(tool_error(error)),
         }
     }
@@ -328,6 +331,18 @@ fn json_result<T: Serialize>(value: T) -> Result<CallToolResult, McpError> {
         McpError::internal_error(format!("failed to serialize tool response: {error}"), None)
     })?;
     Ok(CallToolResult::structured(value))
+}
+
+/// Build a tool result that carries the structured payload plus a plain text
+/// block with `text` verbatim.
+///
+/// `CallToolResult::structured` serializes the payload as JSON, which escapes
+/// control characters; clients that only read `content` need the original text
+/// (for example raw task logs with ANSI escapes).
+fn json_result_with_text<T: Serialize>(value: T, text: String) -> Result<CallToolResult, McpError> {
+    let mut result = json_result(value)?;
+    result.content = vec![ContentBlock::text(text)];
+    Ok(result)
 }
 
 fn tool_error(error: SemaphoreError) -> CallToolResult {
@@ -610,10 +625,11 @@ mod tests {
     #[tokio::test]
     async fn get_task_raw_output_returns_text() {
         let mock_server = MockServer::start().await;
+        let raw = "PLAY [all] ***\n\x1b[0;32mok\x1b[0m: [host]\n";
         Mock::given(method("GET"))
             .and(path("/api/project/7/tasks/99/raw_output"))
             .and(header("authorization", "Bearer request-token"))
-            .respond_with(ResponseTemplate::new(200).set_body_string("line 1\nline 2\n"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(raw))
             .expect(1)
             .mount(&mock_server)
             .await;
@@ -630,8 +646,29 @@ mod tests {
             .await
             .expect("tool should succeed");
 
-        let content = result.structured_content.expect("structured content");
-        assert_eq!(content["raw_output"], "line 1\nline 2\n");
+        let content = result
+            .structured_content
+            .clone()
+            .expect("structured content");
+        assert_eq!(content["raw_output"], raw);
+
+        // Clients that ignore `structuredContent` must still receive the raw
+        // text with the real ANSI escape, not the JSON-escaped form.
+        let text = result
+            .content
+            .first()
+            .and_then(|content| content.as_text())
+            .map(|text| text.text.as_str())
+            .unwrap_or_default();
+        assert!(
+            text.contains('\u{1b}'),
+            "raw text should keep the ANSI escape: {text:?}"
+        );
+        assert!(text.contains("[0;32m"), "unexpected raw text: {text:?}");
+        assert!(
+            !text.contains("\\u001b"),
+            "raw text should not be JSON-escaped: {text:?}"
+        );
     }
 
     #[tokio::test]

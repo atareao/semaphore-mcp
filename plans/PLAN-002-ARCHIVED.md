@@ -42,13 +42,13 @@ de un proxy inverso.
 - [x] Añadir `semaphore-mcp.territoriolinux.es` → `100.64.0.1` en `dns.extra_records` de Headscale y retirar `mcp.territoriolinux.es`.
 - [x] Crear la sonda inofensiva `scripts/e2e-probe.sh` en `/data/infra` y la plantilla `bash` `e2e-probe` (id 2) en Semaphore.
 - [x] Fusionar el PR #4 por rebase, publicar el tag `v0.1.1` y construir la imagen multi-arquitectura en GHCR.
-- [ ] Desplegar `0.1.1` en `co1` con `MCP_ALLOWED_HOSTS=semaphore-mcp.territoriolinux.es`.
-- [ ] Verificar `initialize` de MCP de punta a punta por la URL pública.
-- [ ] Ejecutar el E2E contra el Semaphore real y verificar los `web_urls`.
-- [ ] Sincronizar `/data/infra` (`deploy/semaphore-mcp/compose.yaml` y `docs/semaphore-mcp.md`) con el despliegue nuevo.
-- [ ] Añadir el servidor `semaphore` a `~/.config/opencode/opencode.jsonc` con el token por `{file:...}`.
-- [ ] Escribir `docs/despliegue.md`.
-- [ ] Escribir `HANDOFF.md` y archivar este plan como `PLAN-002-ARCHIVED.md`.
+- [x] Desplegar `0.1.1` en `co1` con `MCP_ALLOWED_HOSTS=semaphore-mcp.territoriolinux.es`.
+- [x] Verificar `initialize` de MCP de punta a punta por la URL pública.
+- [x] Ejecutar el E2E contra el Semaphore real y verificar los `web_urls`.
+- [x] Sincronizar `/data/infra` (`deploy/semaphore-mcp/compose.yaml` y `docs/semaphore-mcp.md`) con el despliegue nuevo.
+- [x] Añadir el servidor `semaphore` a `~/.config/opencode/opencode.jsonc` con el token por `{file:...}`.
+- [x] Escribir `docs/despliegue.md`.
+- [x] Escribir `HANDOFF.md` y archivar este plan como `PLAN-002-ARCHIVED.md`.
 
 ## Criterios de aceptación
 
@@ -70,3 +70,15 @@ de un proxy inverso.
   ninguna credencial de Semaphore.
 - **Sonda E2E dedicada** (`e2e-probe`) para no lanzar la plantilla real
   `Aplicar site.yml`, que aplica configuración sobre la infraestructura.
+
+## Resultado
+
+- Contenedor `ghcr.io/atareao/semaphore-mcp:0.1.1` en `co1`, `Up (healthy)`,
+  escuchando en `0.0.0.0:8090/mcp` con `allowed hosts: explicit list
+  ["semaphore-mcp.territoriolinux.es"]`.
+- 12 tools expuestas (`tools/list`) y `initialize` 200 con `mcp-session-id` por
+  la URL pública.
+- E2E en verde contra el Semaphore real (tareas 19 y 20, ambas `success`) y
+  `web_urls` construidos con `SEMAPHORE_PUBLIC_URL`.
+- MCP consumido desde opencode con el token en passthrough; el stack de `co1` no
+  guarda credenciales.

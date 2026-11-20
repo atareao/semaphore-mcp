@@ -2,10 +2,10 @@
 
 MCP server for [Semaphore UI](https://semaphoreui.com/), written in Rust.
 
-> **Work in progress.** This repository is the initial skeleton: the REST client
-> is typed, the configuration and URL helpers are in place, and the MCP server
-> boots over HTTP. The 12 v1 tools are not registered yet. See
-> [`plans/PLAN-001.md`](plans/PLAN-001.md).
+> **Status.** v1 feature-complete: the typed REST client covers the 11 Semaphore
+> endpoints, the 12 MCP tools (those 11 plus `ping`) are registered over the
+> streamable HTTP transport, and task results come back with public `web_urls`.
+> See [`plans/PLAN-001.md`](plans/PLAN-001.md).
 
 ## Why
 
@@ -43,8 +43,8 @@ streamable HTTP transport. Stdio is not supported in v1.
 cargo test
 ```
 
-The skeleton follows a TDD workflow: the `run_task` client test is intentionally
-red until the endpoint is implemented.
+The suite uses `wiremock` to fake Semaphore and covers the REST client and the
+MCP tools: request shapes, token passthrough, `web_urls` and typed errors.
 
 ## License
 

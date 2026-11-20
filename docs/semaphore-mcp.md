@@ -58,6 +58,9 @@ salida y errores (Fase 2 completa).
   anidados en `params`.
 - Los fallos de decodificación JSON se reportan como `SemaphoreError::Decode`
   con la URL y el cuerpo de respuesta (nunca cabeceras ni tokens).
+- `get_task_raw_output` devuelve el log en `structuredContent.raw_output` y
+  además como bloque de texto (`content`) con el texto tal cual, ANSI incluido,
+  para clientes que no consumen `structuredContent`.
 - Las respuestas de tarea (`Task`) llevan `web_urls` construidas en el cliente;
   `SemaphoreServer::new` cablea `SEMAPHORE_PUBLIC_URL` mediante
   `SemaphoreClient::with_public_url`.

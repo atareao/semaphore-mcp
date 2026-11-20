@@ -11,3 +11,9 @@ services:
       - SEMAPHORE_URL=${SEMAPHORE_URL}
       - SEMAPHORE_PUBLIC_URL=${SEMAPHORE_PUBLIC_URL}
       - SEMAPHORE_API_TOKEN=${SEMAPHORE_API_TOKEN}
+      # Host names accepted by the MCP transport (comma-separated). Leave it
+      # commented to keep rmcp's safe default (loopback only). Set it to the
+      # public name when the server runs behind a reverse proxy, e.g.
+      # MCP_ALLOWED_HOSTS=semaphore-mcp.example.com
+      # Use "*" to accept any Host (only when not directly exposed).
+      # - MCP_ALLOWED_HOSTS=

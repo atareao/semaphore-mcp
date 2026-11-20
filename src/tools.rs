@@ -753,6 +753,41 @@ mod tests {
         assert!(text.contains("401"), "unexpected error text: {text}");
     }
 
+    #[tokio::test]
+    async fn upstream_server_error_is_returned_as_tool_error_without_token() {
+        let mock_server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/project/7/templates"))
+            .and(header("authorization", "Bearer request-token"))
+            .respond_with(ResponseTemplate::new(500).set_body_string("boom"))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let server = server_for(&mock_server.uri());
+        let result = server
+            .list_templates(
+                Parameters(ProjectIdParams { project_id: 7 }),
+                parts_with_bearer("request-token"),
+            )
+            .await
+            .expect("tool should return a tool error");
+
+        assert_eq!(result.is_error, Some(true));
+        assert!(result.structured_content.is_none());
+        let text = result
+            .content
+            .first()
+            .and_then(|content| content.as_text())
+            .map(|text| text.text.as_str())
+            .unwrap_or_default();
+        assert!(text.contains("500"), "unexpected error text: {text}");
+        assert!(
+            !text.contains("request-token"),
+            "the token must never leak into the error: {text}"
+        );
+    }
+
     #[test]
     fn tool_router_exposes_all_v1_tools() {
         let router = SemaphoreServer::tool_router();

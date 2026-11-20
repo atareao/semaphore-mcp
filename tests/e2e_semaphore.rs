@@ -14,6 +14,11 @@
 //! `SEMAPHORE_PUBLIC_URL`, `SEMAPHORE_E2E_PROJECT_ID` and
 //! `SEMAPHORE_E2E_TEMPLATE_ID`.
 //!
+//! The template used by the E2E **must be harmless and finish successfully**:
+//! the test asserts the task ends in `success`, and if it ends in any other
+//! final state (`error`, `stopped`, …) the test fails printing the raw log. This
+//! way a malformed `run_task` body cannot pass unnoticed.
+//!
 //! The test never prints the token nor the `Authorization` header: only ids,
 //! statuses and URLs.
 
@@ -128,6 +133,25 @@ async fn full_task_lifecycle_against_real_semaphore() {
     println!("task detail url: {}", urls.task_detail);
     println!("project tasks url: {}", urls.project_tasks);
 
+    // Fetch the raw log *before* asserting on the final status so a failure can
+    // be diagnosed from the assertion message itself.
+    let raw = client
+        .get_task_raw_output(&token, project_id, task_id)
+        .await
+        .expect("get_task_raw_output");
+    println!("raw output bytes: {}", raw.len());
+    // A template that prints nothing legitimately returns an empty log; if the
+    // E2E template is silent, relax this assertion to `let _ = raw;`.
+    assert!(
+        !raw.is_empty(),
+        "get_task_raw_output returned an empty log for task {task_id}"
+    );
+
+    assert_eq!(
+        status, "success",
+        "task {task_id} ended as '{status}'; the E2E template must be harmless and succeed. Raw log:\n{raw}"
+    );
+
     assert_eq!(
         origin(&urls.task_detail),
         origin(&config.public_url),
@@ -145,17 +169,5 @@ async fn full_task_lifecycle_against_real_semaphore() {
             .contains(&format!("/project/{project_id}/history?t={task_id}")),
         "unexpected task detail URL: {}",
         urls.task_detail
-    );
-
-    let raw = client
-        .get_task_raw_output(&token, project_id, task_id)
-        .await
-        .expect("get_task_raw_output");
-    println!("raw output bytes: {}", raw.len());
-    // A template that prints nothing legitimately returns an empty log; if the
-    // E2E template is silent, relax this assertion to `let _ = raw;`.
-    assert!(
-        !raw.is_empty(),
-        "get_task_raw_output returned an empty log for task {task_id}"
     );
 }

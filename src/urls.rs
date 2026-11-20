@@ -1,6 +1,7 @@
 //! Helpers to build public, user-facing Semaphore URLs.
 
-use serde::Serialize;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 /// Join a base URL with a path, avoiding duplicated slashes.
 ///
@@ -23,7 +24,10 @@ pub fn public_url_for(base_public_url: &str, path: &str) -> String {
 }
 
 /// Public URLs returned alongside task results.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+///
+/// They are not part of the Semaphore API payload: the client builds them from
+/// the configured public URL and the task coordinates.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct WebUrls {
     /// Direct link to the task detail view.
     pub task_detail: String,

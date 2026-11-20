@@ -22,10 +22,29 @@ public URLs for task results.
 | `SEMAPHORE_API_TOKEN` | no | — | Fixed token. When set, it always wins over the request header. |
 | `MCP_HOST` | no | `0.0.0.0` | Address the MCP server binds to. |
 | `MCP_PORT` | no | `8090` | Port the MCP server binds to. |
+| `MCP_ALLOWED_HOSTS` | no | loopback only | Comma-separated `Host` names accepted by the MCP transport. Use `*` to accept any host. |
 
 Token passthrough: the server forwards the client's `Authorization: Bearer`
 header to Semaphore. It does not store a token unless `SEMAPHORE_API_TOKEN` is
 configured.
+
+### Host header validation
+
+The streamable HTTP transport validates the incoming `Host` header. By default
+only loopback names (`localhost`, `127.0.0.1`, `::1`) are accepted, so **behind a
+reverse proxy** (Traefik, nginx, …) every request is answered with
+`403 Forbidden: Host header is not allowed` unless you set `MCP_ALLOWED_HOSTS` to
+the public name:
+
+```bash
+MCP_ALLOWED_HOSTS=semaphore-mcp.example.com
+```
+
+- Comma-separated list, trimmed; an entry without a port matches any port and an
+  entry with a port requires that exact port.
+- `MCP_ALLOWED_HOSTS=*` disables the check and accepts any `Host`. Only use it
+  when the endpoint is not directly reachable from untrusted clients.
+- `Origin` validation stays disabled, as in rmcp's default.
 
 ## Build and run
 

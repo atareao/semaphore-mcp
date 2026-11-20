@@ -19,10 +19,10 @@ sobre la API REST de Semaphore y devuelve enlaces públicos correctos.
 ## Cómo funciona
 
 1. `Config::from_env` lee `SEMAPHORE_URL`, `SEMAPHORE_PUBLIC_URL`, `MCP_HOST`,
-   `MCP_PORT` y `SEMAPHORE_API_TOKEN`.
+   `MCP_PORT`, `MCP_ALLOWED_HOSTS` y `SEMAPHORE_API_TOKEN`.
 2. `SemaphoreServer` envuelve un `SemaphoreClient` apuntando a `SEMAPHORE_URL`.
-3. El servidor se publica con `rmcp` + `axum` en `/mcp` usando el transporte
-   HTTP streamable.
+3. `build_app` publica el servidor con `rmcp` + `axum` en `/mcp` usando el
+   transporte HTTP streamable y aplica la política de `Host` (`AllowedHosts`).
 4. Cada tool recibe el token del header `Authorization: Bearer` de la petición
    MCP y lo reenvía a Semaphore. Si `SEMAPHORE_API_TOKEN` está definido, se usa
    siempre ese token.
@@ -76,6 +76,27 @@ entorno; defínelas en un fichero `.env` junto al `compose.yml`.
 | `SEMAPHORE_URL` | — | sí |
 | `SEMAPHORE_PUBLIC_URL` | cae a `SEMAPHORE_URL` | no |
 | `SEMAPHORE_API_TOKEN` | — | no; si se define, gana sobre el `Authorization: Bearer` del cliente MCP |
+| `MCP_ALLOWED_HOSTS` | solo loopback (`localhost`, `127.0.0.1`, `::1`) | no; lista separada por comas de nombres `Host` aceptados. `*` desactiva la comprobación |
+
+### Host header validation
+
+`rmcp` valida la cabecera `Host` de cada petición al transporte HTTP streamable y
+responde `403 Forbidden: Host header is not allowed` cuando no está en la lista.
+Por defecto solo se acepta loopback, así que **detrás de Traefik** el `Host` es el
+nombre público y hay que declararlo:
+
+```bash
+MCP_ALLOWED_HOSTS=semaphore-mcp.territoriolinux.es
+```
+
+- Lista separada por comas, con espacios recortados y entradas vacías ignoradas.
+- Una entrada sin puerto casa con cualquier puerto; con puerto exige ese puerto.
+- `MCP_ALLOWED_HOSTS=*` acepta cualquier `Host` (útil si el endpoint solo es
+  accesible desde la red interna). Úsalo con criterio: desactiva la protección.
+- Un valor ausente, vacío o solo espacios deja el comportamiento por defecto
+  (solo loopback).
+- `MCP_ALLOWED_HOSTS` no es un secreto: aparece en el `Debug` de `Config`. El
+  `SEMAPHORE_API_TOKEN` sigue redactado.
 
 ### Endpoint MCP
 

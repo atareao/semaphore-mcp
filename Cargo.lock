@@ -1464,6 +1464,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "http",
+ "http-body-util",
  "reqwest",
  "rmcp",
  "schemars",
@@ -1473,6 +1474,7 @@ dependencies = [
  "tokio",
  "tokio-test",
  "tokio-util",
+ "tower",
  "tracing",
  "tracing-subscriber",
  "wiremock",

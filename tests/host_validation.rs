@@ -97,6 +97,35 @@ async fn default_policy_accepts_loopback_with_port() {
 }
 
 #[tokio::test]
+async fn host_matching_is_case_insensitive() {
+    let allowed = AllowedHosts::List(vec![PUBLIC_HOST.to_string()]);
+
+    let (status, body) = post_mcp(&allowed, "Semaphore-MCP.Territoriolinux.es").await;
+
+    assert_ne!(status, StatusCode::FORBIDDEN, "body: {body}");
+    assert!(
+        !body.contains(FORBIDDEN_BODY),
+        "host was rejected: {status} {body}"
+    );
+}
+
+#[tokio::test]
+async fn listed_port_must_match_exactly() {
+    let allowed = AllowedHosts::List(vec!["semaphore.example.com:8090".to_string()]);
+
+    let (status, body) = post_mcp(&allowed, "semaphore.example.com:8090").await;
+    assert_ne!(status, StatusCode::FORBIDDEN, "body: {body}");
+    assert!(
+        !body.contains(FORBIDDEN_BODY),
+        "host was rejected: {status} {body}"
+    );
+
+    let (status, body) = post_mcp(&allowed, "semaphore.example.com:9090").await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "body: {body}");
+    assert!(body.contains(FORBIDDEN_BODY), "unexpected body: {body}");
+}
+
+#[tokio::test]
 async fn any_policy_accepts_any_host() {
     let (status, body) = post_mcp(&AllowedHosts::Any, FOREIGN_HOST).await;
 

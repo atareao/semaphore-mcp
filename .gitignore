@@ -1,0 +1,8 @@
+/target
+HANDOFF.md
+.env
+.env.*
+*.log
+.DS_Store
+.idea/
+.vscode/

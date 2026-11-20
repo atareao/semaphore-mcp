@@ -1,0 +1,43 @@
+[package]
+name = "semaphore-mcp"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+authors = ["Lorenzo Carbonell (atareao) <atareao@users.noreply.github.com>"]
+license = "MIT OR Apache-2.0"
+description = "MCP server for Semaphore UI, written in Rust"
+repository = "https://github.com/atareao/semaphore-mcp"
+homepage = "https://github.com/atareao/semaphore-mcp"
+documentation = "https://docs.rs/semaphore-mcp"
+readme = "README.md"
+keywords = ["mcp", "semaphore", "ansible", "llm", "automation"]
+categories = ["command-line-utilities", "web-programming"]
+
+[lib]
+name = "semaphore_mcp"
+path = "src/lib.rs"
+
+[[bin]]
+name = "semaphore-mcp"
+path = "src/main.rs"
+
+[dependencies]
+axum = "0.8"
+rmcp = { version = "3.11", features = ["transport-streamable-http-server"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
+schemars = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "signal"] }
+tokio-util = "0.7"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
+wiremock = "0.6"
+
+[profile.release]
+lto = "thin"
+strip = "symbols"

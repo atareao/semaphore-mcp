@@ -23,6 +23,7 @@ path = "src/main.rs"
 
 [dependencies]
 axum = "0.8"
+http = "1"
 rmcp = { version = "3.11", features = ["transport-streamable-http-server"] }
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
 schemars = "1"

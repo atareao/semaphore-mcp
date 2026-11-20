@@ -26,9 +26,10 @@ Issue: [#1](https://github.com/atareao/semaphore-mcp/issues/1)
 - [x] Añadir `web_urls` a las respuestas de tareas.
 - [x] Tests de las tools (entrada, salida y errores).
 
-## Fase 3 — Dockerfile distroless + E2E
+## Fase 3 — Dockerfile + E2E
 
-- [ ] Dockerfile multi-stage con imagen distroless.
+- [x] Dockerfile multi-stage con imagen mínima Alpine (musl), como el resto de
+      MCP del monorepo.
 - [ ] Publicación de la imagen en el registro.
 - [ ] E2E contra una instancia real de Semaphore: listar proyectos, ejecutar y
       consultar una tarea.

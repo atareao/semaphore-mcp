@@ -38,7 +38,8 @@ Ver la tabla del [`README.md`](../README.md).
 Cliente REST tipado completo (12 operaciones: `list_projects`, `list_templates`,
 `get_template`, `run_task`, `get_task`, `list_tasks`, `stop_task`,
 `get_task_raw_output`, `list_inventory`, `list_repositories`, `list_access_keys`)
-con tests wiremock. Las tools MCP aún no están registradas (Fase 2).
+con tests wiremock. Las 12 tools MCP están registradas con `#[tool_router]` y
+`#[tool]` de `rmcp`, con tests de entrada, salida y errores (Fase 2 completa).
 
 ## Notas de API
 
@@ -48,8 +49,30 @@ con tests wiremock. Las tools MCP aún no están registradas (Fase 2).
   `/output`. El cliente devuelve el texto tal cual, sin quitar ANSI ni analizar.
 - `stop_task` hace `POST .../tasks/{task_id}/stop` y no devuelve cuerpo.
 - Las respuestas de tarea (`Task`) llevan `web_urls` construidas en el cliente;
-  el cliente por defecto usa `SEMAPHORE_URL` como URL pública y
-  `with_public_url` permite pasar `SEMAPHORE_PUBLIC_URL` (Fase 2 lo cablea).
+  `SemaphoreServer::new` cablea `SEMAPHORE_PUBLIC_URL` mediante
+  `SemaphoreClient::with_public_url`.
+
+## Tools MCP
+
+| Tool | Entrada | Salida |
+| --- | --- | --- |
+| `ping` | — | `pong` |
+| `list_projects` | — | lista de proyectos |
+| `list_templates` | `project_id` | lista de templates |
+| `get_template` | `project_id`, `template_id` | template |
+| `run_task` | `project_id`, `template_id` | tarea creada con `web_urls` |
+| `get_task` | `project_id`, `task_id` | tarea con `web_urls` |
+| `list_tasks` | `project_id` | tareas con `web_urls` |
+| `stop_task` | `project_id`, `task_id` | `{stopped: true}` |
+| `get_task_raw_output` | `project_id`, `task_id` | `{raw_output}` |
+| `list_inventory` | `project_id` | inventario |
+| `list_repositories` | `project_id` | repositorios |
+| `list_access_keys` | `project_id` | access keys |
+
+Los IDs son enteros. El token se toma de `SEMAPHORE_API_TOKEN` si está definido;
+si no, del header `Authorization: Bearer` de la petición MCP. Si falta, la tool
+devuelve un error `invalid_params`. Los errores del cliente se devuelven como
+`CallToolResult` con `is_error: true` y el mensaje tipado.
 
 ## Decisiones
 
@@ -62,6 +85,5 @@ con tests wiremock. Las tools MCP aún no están registradas (Fase 2).
 
 ## Follow-ups
 
-- Registrar las 12 tools.
 - Tests E2E contra una instancia real de Semaphore.
 - Dockerfile distroless y publicación de imagen.

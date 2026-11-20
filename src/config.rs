@@ -3,7 +3,7 @@
 use std::env;
 
 /// Runtime configuration for the MCP server.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Config {
     /// Internal Semaphore URL used for REST calls.
     pub semaphore_url: String,
@@ -16,6 +16,19 @@ pub struct Config {
     /// Optional fixed API token. When set, it takes precedence over the
     /// per-request `Authorization: Bearer` header.
     pub api_token: Option<String>,
+}
+
+/// Hand-written so the API token is never printed by logs or panics.
+impl std::fmt::Debug for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Config")
+            .field("semaphore_url", &self.semaphore_url)
+            .field("public_url", &self.public_url)
+            .field("host", &self.host)
+            .field("port", &self.port)
+            .field("api_token", &self.api_token.as_ref().map(|_| "<redacted>"))
+            .finish()
+    }
 }
 
 /// Errors produced while loading [`Config`].
@@ -256,5 +269,24 @@ mod tests {
         assert_eq!(config.resolve_token(Some("Basic request-token")), None);
         assert_eq!(config.resolve_token(Some("Bearer")), None);
         assert_eq!(config.resolve_token(Some("Bearer   ")), None);
+    }
+
+    #[test]
+    fn debug_output_redacts_the_api_token() {
+        let config = Config {
+            semaphore_url: "http://semaphore:3000".to_string(),
+            public_url: "http://semaphore:3000".to_string(),
+            host: "0.0.0.0".to_string(),
+            port: 8090,
+            api_token: Some("super-secret-token".to_string()),
+        };
+
+        let debug = format!("{config:?}");
+
+        assert!(debug.contains("<redacted>"), "unexpected debug: {debug}");
+        assert!(
+            !debug.contains("super-secret-token"),
+            "token leaked: {debug}"
+        );
     }
 }

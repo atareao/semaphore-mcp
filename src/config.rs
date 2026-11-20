@@ -272,6 +272,61 @@ mod tests {
     }
 
     #[test]
+    fn allowed_hosts_defaults_to_loopback_when_unset() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _guard = EnvGuard::set(&[
+            ("SEMAPHORE_URL", Some("http://semaphore:3000")),
+            ("MCP_ALLOWED_HOSTS", None),
+        ]);
+
+        let config = Config::from_env().expect("config should load");
+
+        assert_eq!(config.allowed_hosts, AllowedHosts::Default);
+    }
+
+    #[test]
+    fn allowed_hosts_star_means_any() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _guard = EnvGuard::set(&[
+            ("SEMAPHORE_URL", Some("http://semaphore:3000")),
+            ("MCP_ALLOWED_HOSTS", Some(" * ")),
+        ]);
+
+        let config = Config::from_env().expect("config should load");
+
+        assert_eq!(config.allowed_hosts, AllowedHosts::Any);
+    }
+
+    #[test]
+    fn allowed_hosts_parses_comma_separated_list() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _guard = EnvGuard::set(&[
+            ("SEMAPHORE_URL", Some("http://semaphore:3000")),
+            ("MCP_ALLOWED_HOSTS", Some("a, b ,")),
+        ]);
+
+        let config = Config::from_env().expect("config should load");
+
+        assert_eq!(
+            config.allowed_hosts,
+            AllowedHosts::List(vec!["a".to_string(), "b".to_string()])
+        );
+    }
+
+    #[test]
+    fn allowed_hosts_blank_value_falls_back_to_default() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _guard = EnvGuard::set(&[
+            ("SEMAPHORE_URL", Some("http://semaphore:3000")),
+            ("MCP_ALLOWED_HOSTS", Some(" , ")),
+        ]);
+
+        let config = Config::from_env().expect("config should load");
+
+        assert_eq!(config.allowed_hosts, AllowedHosts::Default);
+    }
+
+    #[test]
     fn debug_output_redacts_the_api_token() {
         let config = Config {
             semaphore_url: "http://semaphore:3000".to_string(),

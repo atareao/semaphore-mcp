@@ -42,8 +42,12 @@ MCP_ALLOWED_HOSTS=semaphore-mcp.example.com
 
 - Comma-separated list, trimmed; an entry without a port matches any port and an
   entry with a port requires that exact port.
-- `MCP_ALLOWED_HOSTS=*` disables the check and accepts any `Host`. Only use it
-  when the endpoint is not directly reachable from untrusted clients.
+- Matching is **exact** and case-insensitive: no wildcards or patterns are
+  supported. An entry such as `*.example.com` never matches and fails silently
+  (the request is simply rejected with 403).
+- The only special value is a bare `*` (exactly one asterisk, no host around it),
+  which disables the check and accepts any `Host`. `*` is not a pattern; only use
+  it when the endpoint is not directly reachable from untrusted clients.
 - `Origin` validation stays disabled, as in rmcp's default.
 
 ## Build and run

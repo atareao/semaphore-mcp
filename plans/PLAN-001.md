@@ -18,13 +18,13 @@ Issue: [#1](https://github.com/atareao/semaphore-mcp/issues/1)
 
 ## Fase 2 — Servidor MCP y 12 tools
 
-- [ ] Registrar `ping`.
-- [ ] Registrar `list_projects`, `list_templates`, `get_template`, `run_task`.
-- [ ] Registrar `get_task`, `list_tasks`, `stop_task`, `get_task_raw_output`.
-- [ ] Registrar `list_inventory`, `list_repositories`, `list_access_keys`.
-- [ ] Propagar el token del header MCP al cliente REST.
-- [ ] Añadir `web_urls` a las respuestas de tareas.
-- [ ] Tests de las tools (entrada, salida y errores).
+- [x] Registrar `ping`.
+- [x] Registrar `list_projects`, `list_templates`, `get_template`, `run_task`.
+- [x] Registrar `get_task`, `list_tasks`, `stop_task`, `get_task_raw_output`.
+- [x] Registrar `list_inventory`, `list_repositories`, `list_access_keys`.
+- [x] Propagar el token del header MCP al cliente REST.
+- [x] Añadir `web_urls` a las respuestas de tareas.
+- [x] Tests de las tools (entrada, salida y errores).
 
 ## Fase 3 — Dockerfile distroless + E2E
 

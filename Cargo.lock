@@ -1463,6 +1463,7 @@ name = "semaphore-mcp"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "http",
  "reqwest",
  "rmcp",
  "schemars",

@@ -10,7 +10,7 @@ use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
-use crate::urls::{task_web_urls, WebUrls};
+use crate::urls::{WebUrls, task_web_urls};
 
 /// Timeout applied to every REST call.
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
@@ -161,7 +161,7 @@ impl SemaphoreClient {
 
     /// Attach the public `web_urls` for a task, if not already present.
     fn attach_web_urls(&self, project_id: i64, task: &mut Task) {
-        task.web_urls = Some(urls::task_web_urls(
+        task.web_urls = Some(task_web_urls(
             &self.public_url,
             &project_id.to_string(),
             &task.id.to_string(),
